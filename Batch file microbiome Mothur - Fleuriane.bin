@@ -1,0 +1,81 @@
+## METAGENOMIC ANALYSES TUTORIAL
+## This tutorial is made for level 0 linux users to help analysing metagenomic data on a remote server
+## This tutorial is mostly based on internet resources found here
+## http://rstudio-pubs-static.s3.amazonaws.com/325915_2b6fbb4a06024ea29f1959f5ec0f52e4.html
+## Accession date: 10/03/2023
+## Wrote on the 10/03/2023 by Fleuriane Metissa Djondji Kamga for linux level 0 user.
+## Make the list of paired sequences for building contigs
+make.file(inputdir=./, type=gz)
+## The first thing we want to do is combine our two sets of reads for each sample and then to combine the data from all of the samples. Make contigs with R1 and R2 files using 32 cores
+make.contigs(file=stability.files, oligos=V3V4.oligos, pdiffs=2, processors=4)
+## Summarize the sequences to overview their sizes
+summary.seqs(fasta=stability.trim.contigs.fasta)
+## Trim the primers and/or barcodes with the oligo files that you can build in txt file and rename it
+## changing its extention from .txt to .oligos: you should build it like this first line: forward	CCTACGGGNGGCWGCAGNNNNNNNNNN
+##									     second line: reverse	GACTACHVGGGTATCTAATCCNNNNNNNNNN
+## These are the oligos used for the sequencing. Note they contain ambig codes! ("first line" and "second line" are not included in the file)
+## Refer to the following link for more details in building files for removing oligos and/or barcodes
+## https://mothur.org/wiki/oligos_file/
+trim.seqs(fasta=stability.trim.contigs.fasta, oligos=V3V4.oligos, processors=4)
+## Summarize again the sequences to overview the new sizes without primers
+summary.seqs(fasta=stability.trim.contigs.trim.fasta)
+## Screen and Remove poor quality sequences
+screen.seqs(fasta=stability.trim.contigs.trim.fasta, group=stability.contigs.groups, maxambig=2, minlength=380, maxlength=430, maxhomop=6)
+## We can run the following command to see what are our current working environment and files
+get.current()
+## We can again summarize to see how are the working seq now
+summary.seqs(fasta=stability.trim.contigs.trim.good.fasta)
+## Search for all the unique sequences
+unique.seqs(fasta=stability.trim.contigs.trim.good.fasta)
+## Count sequences to Simplify names and groups
+count.seqs(name=stability.trim.contigs.trim.good.names, group=stability.contigs.good.groups)
+## Summarize again with the count table now
+summary.seqs(count=stability.trim.contigs.trim.good.count_table)
+## Delimit and rename the area for alignment with reference database and Align to the delimited reference database area
+align.seqs(fasta=stability.trim.contigs.trim.good.unique.fasta, reference=silva.V3V4.align, flip=T)
+## Summarize the alignment
+summary.seqs(fasta=stability.trim.contigs.trim.good.unique.align, count=stability.trim.contigs.trim.good.count_table)
+## Screen again the sequences to select those well aligned and sharing same nucleotide positions
+screen.seqs(fasta=stability.trim.contigs.trim.good.unique.align, count=stability.trim.contigs.trim.good.count_table, summary=stability.trim.contigs.trim.good.unique.summary, start=26, end=16146)
+## Summarize again to view the rescreening and resizing effect
+summary.seqs(fasta=stability.trim.contigs.trim.good.unique.good.align, count=stability.trim.contigs.trim.good.good.count_table)
+## Filter the seqs to remove the dots and poor qual
+filter.seqs(fasta=stability.trim.contigs.trim.good.unique.good.align, vertical=T, trump=.)
+## Find unique sequences once more
+unique.seqs(fasta=stability.trim.contigs.trim.good.unique.good.filter.fasta, count=stability.trim.contigs.trim.good.good.count_table)
+## Pre-cluster the sequences for further denoising
+pre.cluster(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.count_table, diffs=4, processors=30)
+## Summarize once more
+summary.seqs(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.count_table)
+## Search for chimeras
+chimera.uchime(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.count_table, dereplicate=t)
+## Removing the chimeras
+remove.seqs(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.count_table, accnos=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.denovo.uchime.accnos)
+## Summarize again
+summary.seqs(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.count_table)
+## Classify the sequences and remove undesirable lineages like mitochondria, 18s....
+classify.seqs(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.denovo.uchime.pick.count_table, reference=silva.V3V4.align, taxonomy=silva.nr.tax, cutoff=80)
+remove.lineage(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.denovo.uchime.pick.count_table, taxonomy=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.nr.wang.taxonomy, taxon=Chloroplast;-Mitochondria;-unknown;-Archaea;-Eukaryota;)
+## Summarize again
+summary.seqs(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.pick.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.denovo.uchime.pick.pick.count_table)
+## Split the database to abundant and rare sequences
+split.abund(fasta=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.pick.fasta, count=stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.denovo.uchime.pick.pick.count_table, cutoff=0.00001)
+## Now, most of the cleaning is done. We can rename by copying the final files to shorter their names for the next steps
+system(cp stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.pick.pick.abund.fasta stability.final.abund.fasta)
+system(cp stability.trim.contigs.trim.good.unique.good.filter.unique.precluster.denovo.uchime.pick.pick.abund.count_table stability.final.abund.count_table)
+## Generate distance matrix and cluster sequences to define OTUs
+dist.seqs(fasta=stability.final.abund.fasta)
+cluster.split(column=stability.final.abund.dist, count=stability.final.abund.count_table, method=opti, cutoff=0.05)
+## Generate OTU matrix (use 0.1 for family level, 0.05 for genus level and 0.03 for species level)
+make.shared(list=stability.final.abund.opti_mcc.list, count=stability.final.abund.count_table, label=0.05)
+## Classify the different OTUs
+classify.seqs(fasta=stability.final.abund.fasta, count=stability.final.abund.count_table, template=trainset18.pds.fasta, taxonomy=trainset18.pds.tax, cutoff=80)
+classify.otu(list=stability.final.abund.opti_mcc.list, taxonomy=stability.final.abund.pds.wang.taxonomy, count=stability.final.abund.count_table, label=0.05, cutoff=80, basis=otu, probs=F)
+## Have a look at the first 4 OTU taxonomy
+system(head -5 stability.final.abund.opti_mcc.0.05.cons.taxonomy)
+## To know you have enough sequences to see all/most of the diversity in the samples, or if you need to redo some samples, You can visualize the rarefaction curves and calculare with Goods coverage.
+## Rarefaction: The best way to use the data generated is to graph it and look from the new unique sequences gained per number of sequences added to level off. At a certain point, you need 1000s of sequences to get only 1 more unique sequence so its not worth it (and probably not even real)
+rarefaction.single(shared=stability.final.abund.opti_mcc.shared)
+## Goods coverage: Calculate per sample and have a look
+summary.single(shared=stability.final.abund.opti_mcc.shared, label=0.05, calc=nseqs-sobs-coverage)
+system(head -25 stability.final.abund.opti_mcc.groups.summary)
