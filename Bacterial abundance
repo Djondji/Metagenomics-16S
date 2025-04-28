@@ -1,12 +1,8 @@
-#### Microbiome analysis for biginner by fleuriane DJONDJI 
-
+#### Microbiome analysis for biginner 
 #### This protocol should be adapted by users according to what they are looking for
 
-#### last modification: 26/04/2023
-
-#### change the working directory to the analysis folder where all your data is located
-
-setwd("E:/projet/These/16S_sequencing/16s_crid/Microbiome_analyses/data_analysis/Analyse_1")
+#### Set the working directory to the analysis folder where all your data is located
+setwd("E:/projet/These/")
 
 #### loading packages
 library("tidyverse")
@@ -63,40 +59,40 @@ carbom
 ## Create table, number of features for each Genus
 table(tax_table(carbom)[, "Genus"], exclude = NULL)     # We can also do it for Phylum and Family levels
 
-## ensures that features with ambiguous Genus annotation are also removed
+### Ensures that features with ambiguous Genus annotation are also removed
 ps0 <- subset_taxa(carbom, !is.na(Genus) & !Genus %in% c("", "uncharacterized"))
 
-## Compute prevalence of each feature, store as data.frame
+### Compute prevalence of each feature, store as data.frame
 prevdf = apply(X = otu_table(ps0),
                MARGIN = ifelse(taxa_are_rows(ps0), yes = 1, no = 2),
                FUN = function(x){sum(x > 0)})
 
-## Add taxonomy and total read counts to this data.frame
+### Add taxonomy and total read counts to this data.frame
 prevdf = data.frame(Prevalence = prevdf,
                     TotalAbundance = taxa_sums(ps0),
                     tax_table(ps0))
 
-##Compute the total and average prevalences of the features in each genus.
+### Compute the total and average prevalences of the features in each genus.
 plyr::ddply(prevdf, "Genus", function(df1){cbind(mean(df1$Prevalence),sum(df1$Prevalence))})
 
-## Rugosibacter appeared in just 2 samples total so we need to Define genus to filter
+### Rugosibacter appeared in just 2 pools of samples total so we need to Define genus to filter
 filterPhyla = c("Rugosibacter")
 ps1 = subset_taxa(ps0, !Genus %in% filterPhyla)
 ps1
 
-## Subset to the remaining Genus
+### Subset to the remaining Genus
 prevdf1 = subset(prevdf, Genus %in% get_taxa_unique(ps1, "Genus"))
 
-##  Define prevalence threshold of at least 3 sample on the total samples
+###  Define prevalence threshold of at least 3 pools of samples on the total samples
 prevalenceThreshold = 0.142857142857142 * nsamples(ps1)
 prevalenceThreshold
 
-## Execute prevalence filter, using `prune_taxa()` function
+### Execute prevalence filter, using `prune_taxa()` function
 keepTaxa = rownames(prevdf1)[(prevdf1$Prevalence >= prevalenceThreshold)]
 ps2 = prune_taxa(keepTaxa, ps0)
 ps2
 
-##compile all the data in one file and exporte it in excel sheet
+### Compile all the data in one file and export it in excel sheet
 pseq <- ps2
 meta <- meta(pseq)
 taxonomy <- tax_table(pseq)
@@ -110,19 +106,18 @@ kable(head(df))
 
 write.csv(df, file = "namefile.csv")
 
-#### Bacterial abundance
-
-# Calculate the relative abundances of bacteria
+#### Plot the relative bacterial abundance in overall pool of samples
+## Calculate the relative abundance of each taxa
 ps_rel_abund <- transform_sample_counts(ps2, function(x) x / sum(x))
 
-# Agglomerate at "Genus" level
+## Agglomerate at "Genus" level
 ps_genus <- tax_glom(ps_rel_abund, taxrank = "Genus")    # We can also do it for Phylum and Family levels
 
-# Extract in data.frame format
+## Extract in data.frame format
 df_melt <- psmelt(ps_genus)
 df_melt$Genus <- as.character(df_melt$Genus)
 
-# Identify the top 10 bacterial taxa
+## Identify the top 10 bacterial taxa
 top10_genera <- df_melt %>%
   group_by(Genus) %>%
   summarise(Total = sum(Abundance)) %>%
@@ -130,16 +125,16 @@ top10_genera <- df_melt %>%
   slice_head(n = 10) %>%
   pull(Genus)
 
-# Group other bacterial taxa into "Others"
+## Group other bacterial taxa into "Others"
 df_melt$Genus[!(df_melt$Genus %in% top10_genera)] <- "Others"
 
-# Create a palet of 11 colors (10 + "Others")
+## Create a palet of 11 colors (10 + "Others")
 palette_11 <- c(
   "#1b9e77", "#d95f02", "#e7298a", "#7570b3", "#66a61e",
-  "#e6ab02", "#a6761d", "#666666", "#00AFBB", "#FC4E07", "#CCCCCC"  # gris pour "Other"
-)
+  "#e6ab02", "#a6761d", "#666666", "#00AFBB", "#FC4E07", "#CCCCCC"  # grey for "Others"
+)                                                                                           # 🎨 Color palette for 10 genera
 
-# Draw the graph
+## Draw the graph of the 10 top bacterial taxa in each pool of samples
 ggplot(df_melt, aes(x = Phenotypes, y = Abundance, fill = Genus)) +
   geom_bar(stat = "identity", position = "fill", width = 0.9) +
   facet_wrap(~Species, scales = "free_x", nrow = 1, strip.position = "bottom") +
@@ -163,117 +158,123 @@ ggplot(df_melt, aes(x = Phenotypes, y = Abundance, fill = Genus)) +
     plot.title = element_text(face = "bold", size = 14, hjust = 0.5)
   )
 
+### Cumulative relative abundance of bacteria taxa according to the resistance phenotype in overall samples
+## Taxa sorted by abundance
+Top <- names(sort(taxa_sums(ps2), decreasing = TRUE))
 
-## Plot the top 10 bacterial taxa in Anopheles gambiae
-                                        
-#Subset Anopheles gambiae samples
+## Agglomerate at "Genus" level
+dat.aglo <- tax_glom(ps2, taxrank = "Genus")    # We can also do it for Phylum and Family levels
+
+## Transform to relative abundance
+dat.trans <- transform_sample_counts(dat.aglo, function(x) x / sum(x))
+
+## Select only the Top 10 most abundant Genera
+Top10 <- names(sort(taxa_sums(dat.trans), decreasing = TRUE))[1:10]
+prune.dat.two <- prune_taxa(Top10, dat.trans)
+
+## Prepare dataframe
+dat.dataframe <- psmelt(prune.dat.two)
+
+## Aggregate by Status and Genus
+dat.agr <- aggregate(Abundance ~ Status + Genus, data = dat.dataframe, FUN = mean)  #Status correspond to the main reistance phenotypes : Fumoz-R, Fumoz-HR, Survivor_1X, Survivor_10X, Unexposed and Kisumu
+
+## Plot with Top 10 Genera
+ggplot(dat.agr, aes(x = Status, y = Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = "fill") +
+  theme_bw() +
+  scale_y_continuous(labels = scales::percent) +
+  theme(
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white', colour = 'white'),
+    legend.position = "right",
+    strip.text = element_text(face = "bold", size = 8, lineheight = 5.0)
+  ) +
+  ylab("Relative Abundance\n") +
+  ggtitle("Top 10 Bacterial Genera composition") +
+  labs(fill = "Genus") +
+  scale_fill_brewer(palette = "Paired")  # <-- NICE COLOR PALETTE for 10 groups
+
+#### Plot the relative bacterial abundance in Anopheles gambiae                                        
+## Subset Anopheles gambiae samples
 Agamb <- subset_samples(ps2, Species =="Anopheles_gambiae")
-                                        
-#Transform to relative abundance
-ps_rel_abundgamb <- transform_sample_counts(Agamb, function(x){x / sum(x)})
-                                    
-#Calculate the mean abundance of each genus
-genus_means <- ps_rel_abundgamb %>%
-  tax_glom(taxrank = "Genus") %>%
-  psmelt() %>%
-  group_by(Genus) %>%
-  summarise(MeanAbundance = mean(Abundance)) %>%
-  arrange(desc(MeanAbundance))
 
-                                                                                    
-phyloseq::otu_table(ps_rel_abundgamb)[1:5, 1:5]
-phyloseq::plot_bar(ps_rel_abundgamb, fill = "Genus") +
-  geom_bar(stat="identity", position="fill", width = 0.2) +
-  facet_wrap(~Phenotypes, nrow=1, scales="free_x",strip.position ="bottom")+
+## Agglomerate at "Genus" level
+dat.aglo.gamb <- tax_glom(Agamb, taxrank = "Genus")   # We can also do it for Phylum and Family levels
+
+## Transform to relative abundance
+dat.trans.gamb <- transform_sample_counts(dat.aglo.gamb, function(x) x / sum(x))
+
+## Identify Top 10 genera
+Top10gamb <- names(sort(taxa_sums(dat.trans.gamb), decreasing = TRUE))[1:10]
+
+## Prune dataset to keep only Top 10 genera
+prune.dat.two.gamb <- prune_taxa(Top10gamb, dat.trans.gamb)
+
+## Prepare dataframe
+dat.dataframe.gamb <- psmelt(prune.dat.two.gamb)
+
+## Aggregate mean abundance by "Status" and "Genus"
+dat.agr.gamb <- dat.dataframe.gamb %>%
+  group_by(Status, Genus) %>%
+  summarise(Abundance = mean(Abundance)) %>%
+  ungroup()
+
+## Plot
+ggplot(dat.agr.gamb, aes(x = Status, y = Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = "fill") +
   theme_bw() +
-  scale_y_continuous(labels=scales::percent)+
-  theme(axis.title.x = element_blank()) + 
-  theme(axis.title.x = element_blank(), axis.text.x = element_text(angle=90, hjust=1), panel.background = element_rect(fill = 'white', colour = 'white')) + 
-  guides(fill = guide_legend(reverse = FALSE, keywidth = 1, keyheight = 1)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme(
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white', colour = 'white'),
+    legend.position = "right",
+    strip.text = element_text(face = "bold", size = 8, lineheight = 5.0)
+  ) +
   ylab("Relative Abundance\n") +
-  ggtitle("a. Bacterial Composition") +
+  ggtitle("Top 10 Bacterial Genera - Anopheles_gambiae") +
   labs(fill = "Genus") +
-  theme(legend.position = "right") +
-  theme(strip.text = element_text(face="bold", size=8,lineheight=5.0))
+  scale_fill_brewer(palette = "Set3")  # 🎨 Color palette for 10 genera
 
-## Anopheles funestus
-carbomfun <- subset_samples(ps2, Species =="Anopheles_funestus")
-table(phyloseq::tax_table(carbomfun)[, "Genus"])
-phyloseq::otu_table(carbomfun)[1:5, 1:5]
-ps_rel_abundfun = phyloseq::transform_sample_counts(carbomfun, function(x){x / sum(x)})
-phyloseq::otu_table(ps_rel_abundfun)[1:5, 1:5]
-phyloseq::plot_bar(ps_rel_abundfun, fill = "Genus") +
-  geom_bar(stat="identity", position="fill", width = 0.2) +
-  facet_wrap(~Phenotypes, nrow=1, scales="free_x",strip.position ="bottom")+
+#### Plot the relative bacterial abundance in Anopheles funestus                                       
+## Subset Anopheles funestus samples
+Afun <- subset_samples(ps2, Species =="Anopheles_funestus")
+
+## Agglomerate at "Genus" level
+dat.aglo.fun <- tax_glom(Afun, taxrank = "Genus")   # We can also do it for Phylum and Family levels
+
+## Transform to relative abundance
+dat.trans.fun <- transform_sample_counts(dat.aglo.fun, function(x) x / sum(x))
+
+## Identify Top 10 genera
+Top10fun <- names(sort(taxa_sums(dat.trans.fun), decreasing = TRUE))[1:10]
+
+## Prune dataset to keep only Top 10 genera
+prune.dat.two.fun <- prune_taxa(Top10fun, dat.trans.fun)
+
+## Prepare dataframe
+dat.dataframe.fun <- psmelt(prune.dat.two.fun)
+
+## Aggregate mean abundance by "Status" and "Genus"
+dat.agr.fun <- dat.dataframe.fun %>%
+  group_by(Status, Genus) %>%
+  summarise(Abundance = mean(Abundance)) %>%
+  ungroup()
+
+## Plot
+ggplot(dat.agr.fun, aes(x = Status, y = Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = "fill") +
   theme_bw() +
-  scale_y_continuous(labels=scales::percent)+
-  theme(axis.title.x = element_blank()) + 
-  theme(axis.title.x = element_blank(), axis.text.x = element_text(angle=90, hjust=1), panel.background = element_rect(fill = 'white', colour = 'white')) + 
-  guides(fill = guide_legend(reverse = FALSE, keywidth = 1, keyheight = 1)) +
+  scale_y_continuous(labels = scales::percent) +
+  theme(
+    axis.title.x = element_blank(),
+    panel.background = element_rect(fill = 'white', colour = 'white'),
+    legend.position = "right",
+    strip.text = element_text(face = "bold", size = 8, lineheight = 5.0)
+  ) +
   ylab("Relative Abundance\n") +
-  ggtitle("Bacterial Composition") +
+  ggtitle("Top 10 Bacterial Genera - Anopheles_funestus") +
   labs(fill = "Genus") +
-  theme(legend.position = "right") +
-  theme(strip.text = element_text(face="bold", size=8,lineheight=5.0))
-
-#### Cumulative Relative abundance of Genus
-## Per Specie
-
-Top <- names(sort(taxa_sums(ps2), decreasing=TRUE))
-dat.aglo = tax_glom(ps2, taxrank = "Genus")
-dat.trans = transform_sample_counts(dat.aglo, function(x) x/sum(x))
-prune.dat.two = prune_taxa(Top, dat.trans)
-dat.dataframe = psmelt(prune.dat.two)
-dat.agr = aggregate(Abundance~Species+Genus, data=dat.dataframe, FUN=mean)
-ggplot(dat.agr, aes(x=Species, y=Abundance, fill=Genus)) + 
-  geom_bar(stat="identity", position="fill") +
-  theme_bw() +
-  scale_y_continuous(labels=scales::percent) +
-  theme(axis.title.x = element_blank()) + 
-  theme(axis.title.x = element_blank(), panel.background = element_rect(fill = 'white', colour = 'white')) + 
-  ylab("Relative Abundance\n") +
-  ggtitle("Bacterial Composition") +
-  labs(fill = "Genus") +
-  theme(legend.position = "right") +
-  theme(strip.text = element_text(face="bold", size=8,lineheight=5.0))
-
-## An. gambiae
-Topgamb<- names(sort(taxa_sums(carbomgamb), decreasing=TRUE))
-dat.aglo.gamb = tax_glom(carbomgamb, taxrank = "Genus")
-dat.trans.gamb= transform_sample_counts(dat.aglo.gamb, function(x) x/sum(x))
-prune.dat.two.gamb = prune_taxa(Topgamb, dat.trans.gamb)
-dat.dataframe.gamb = psmelt(prune.dat.two.gamb)
-dat.agr.gamb = aggregate(Abundance~Phenotypes+Genus, data=dat.dataframe.gamb, FUN=mean)
-ggplot(dat.agr.gamb, aes(x=Phenotypes, y=Abundance, fill=Genus))+
-  geom_bar(stat="identity", position="fill") +
-  theme_bw() +
-  scale_y_continuous(labels=scales::percent) +
-  theme(axis.title.x = element_blank()) + 
-  theme(axis.title.x = element_blank(), panel.background = element_rect(fill = 'white', colour = 'white')) + 
-  ylab("Relative Abundance\n") +
-  ggtitle("Bacterial Composition") +
-  labs(fill = "Genus") +
-  theme(legend.position = "right") +
-  theme(strip.text = element_text(face="bold", size=8,lineheight=5.0))
-
-## An. funestus
-Topfun<- names(sort(taxa_sums(ps2), decreasing=TRUE))
-dat.aglo.fun = tax_glom(carbomfun, taxrank = "Genus")
-dat.trans.fun= transform_sample_counts(dat.aglo.fun, function(x) x/sum(x))
-prune.dat.two.fun = prune_taxa(Topfun, dat.trans.fun)
-dat.dataframe.fun = psmelt(prune.dat.two.fun)
-dat.agr.fun = aggregate(Abundance~Phenotypes+Genus, data=dat.dataframe.fun, FUN=mean)
-ggplot(dat.agr.fun, aes(x=Phenotypes, y=Abundance, fill=Genus))+
-  geom_bar(stat="identity", position="fill") +
-  theme_bw() +
-  scale_y_continuous(labels=scales::percent) +
-  theme(axis.title.x = element_blank()) + 
-  theme(axis.title.x = element_blank(), panel.background = element_rect(fill = 'white', colour = 'white')) + 
-  ylab("Relative Abundance\n") +
-  ggtitle("Bacterial Composition") +
-  labs(fill = "Genus") +
-  theme(legend.position = "right") +
-  theme(strip.text = element_text(face="bold", size=8,lineheight=5.0))
+  scale_fill_brewer(palette = "Set3")  # 🎨 Color palette for 10 genera
 
 
 
