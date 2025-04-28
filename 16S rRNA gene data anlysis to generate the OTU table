@@ -1,5 +1,4 @@
-## METAGENOMIC ANALYSES TUTORIAL
-
+## Tutorial for 16S rRNA Metagenomic analysis in Mothur software
 ## This tutorial is made for level 0 linux users to help analysing metagenomic data on a remote server. We provide instructions and a workflow description for processing 16S rRNA sequences using Mothur
 ## This tutorial is mostly based on internet resources found here: http://rstudio-pubs-static.s3.amazonaws.com/325915_2b6fbb4a06024ea29f1959f5ec0f52e4.html (Accession date: 10/03/2023)
 ## We will complete all sequence processing in the program mothur (https://www.mothur.org/wiki/Main_Page). All the Windows PC Users need to download ssh client for connecting to the remote computer. 
