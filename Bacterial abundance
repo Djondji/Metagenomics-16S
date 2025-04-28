@@ -12,7 +12,6 @@ setwd("E:/projet/These/16S_sequencing/16s_crid/Microbiome_analyses/data_analysis
 library("tidyverse")
 library("reshape2")
 library("RColorBrewer")
-library("qiime2R")
 library("grid")
 library("phyloseq")
 library("devtools")
@@ -27,11 +26,12 @@ library("ape")
 library("ggpubr")
 library("dendextend")
 library("extrafont")
+library("scales")
 
 #### import data
-otu <- read.csv("OTU_Table_rev.csv", header = T, row.names = 1, sep = ";")
-tax <- read.csv("Taxonomy_Table_fun.csv", header = T, row.names = 1, sep = ";")
-samples_df <- read.csv("Sample_Table_rev.csv", header = T, row.names = 1, sep = ";")
+otu <- read.csv("OTU_Table.csv", header = T, row.names = 1, sep = ";")
+tax <- read.csv("Taxonomy_Table.csv", header = T, row.names = 1, sep = ";")
+samples_df <- read.csv("Sample_Table.csv", header = T, row.names = 1, sep = ";")
 
 #### Let's have a look at the different tables:
 otu[1:2, 1:6]
@@ -59,10 +59,9 @@ standf = function(x, t=total) round(t * (x / sum(x)))
 carbom = transform_sample_counts(mach, standf)
 carbom
 
-#### Taxonomic filtering to get only otus present in more than 3 sample
+#### Taxonomic filtering to get only otus present in more than 3 samples
 ## Create table, number of features for each Genus
-table(tax_table(carbom)[, "Genus"], exclude = NULL)
-
+table(tax_table(carbom)[, "Genus"], exclude = NULL)     # We can also do it for Phylum and Family levels
 
 ## ensures that features with ambiguous Genus annotation are also removed
 ps0 <- subset_taxa(carbom, !is.na(Genus) & !Genus %in% c("", "uncharacterized"))
@@ -109,32 +108,21 @@ sample_data(pseq)$reads_sample <- reads_sample
 df <- psmelt(pseq)
 kable(head(df))
 
-write.csv2(df, file = "metafleuriane.csv")
+write.csv(df, file = "namefile.csv")
 
-#### you can go back into taxonomy and otu file and delete otus which have been removed in meta2
-##file then sart to import data again or continuing with ps2 data
-#### rarefaction curve
-col <- c("black", "darkred", "forestgreen", "orange", "blue", "yellow", "hotpink")
-rarecurve(t(otu_table(ps2)), "otu", col= col, step=50, cex=0.5, xlim=c(0, 500000))
+#### Bacterial abundance
 
-## Bacterial abundance
-library(phyloseq)
-library(dplyr)
-library(ggplot2)
-library(RColorBrewer)
-library(scales)
-
-# 1. Calcul des abondances relatives
+# Calculate the relative abundances of bacteria
 ps_rel_abund <- transform_sample_counts(ps2, function(x) x / sum(x))
 
-# 2. Agglomération au rang "Genus"
-ps_genus <- tax_glom(ps_rel_abund, taxrank = "Genus")
+# Agglomerate at "Genus" level
+ps_genus <- tax_glom(ps_rel_abund, taxrank = "Genus")    # We can also do it for Phylum and Family levels
 
-# 3. Extraction au format data.frame
+# Extract in data.frame format
 df_melt <- psmelt(ps_genus)
 df_melt$Genus <- as.character(df_melt$Genus)
 
-# 4. Identification du top 15
+# Identify the top 10 bacterial taxa
 top10_genera <- df_melt %>%
   group_by(Genus) %>%
   summarise(Total = sum(Abundance)) %>%
@@ -142,16 +130,16 @@ top10_genera <- df_melt %>%
   slice_head(n = 10) %>%
   pull(Genus)
 
-# 5. Regroupement des autres en "Others"
+# Group other bacterial taxa into "Others"
 df_melt$Genus[!(df_melt$Genus %in% top10_genera)] <- "Others"
 
-# 6. Palette de 16 couleurs (10 + Others)
+# Create a palet of 11 colors (10 + "Others")
 palette_11 <- c(
   "#1b9e77", "#d95f02", "#e7298a", "#7570b3", "#66a61e",
   "#e6ab02", "#a6761d", "#666666", "#00AFBB", "#FC4E07", "#CCCCCC"  # gris pour "Other"
 )
 
-# 7. Tracer le graphique
+# Draw the graph
 ggplot(df_melt, aes(x = Phenotypes, y = Abundance, fill = Genus)) +
   geom_bar(stat = "identity", position = "fill", width = 0.9) +
   facet_wrap(~Species, scales = "free_x", nrow = 1, strip.position = "bottom") +
@@ -176,11 +164,23 @@ ggplot(df_melt, aes(x = Phenotypes, y = Abundance, fill = Genus)) +
   )
 
 
-## Anopheles gambiae
-carbomgamb <- subset_samples(ps2, Species =="Anopheles_gambiae")
-table(phyloseq::tax_table(carbomgamb)[, "Genus"])
-phyloseq::otu_table(carbomgamb)[1:5, 1:5]
-ps_rel_abundgamb = phyloseq::transform_sample_counts(carbomgamb, function(x){x / sum(x)})
+## Plot the top 10 bacterial taxa in Anopheles gambiae
+                                        
+#Subset Anopheles gambiae samples
+Agamb <- subset_samples(ps2, Species =="Anopheles_gambiae")
+                                        
+#Transform to relative abundance
+ps_rel_abundgamb <- transform_sample_counts(Agamb, function(x){x / sum(x)})
+                                    
+#Calculate the mean abundance of each genus
+genus_means <- ps_rel_abundgamb %>%
+  tax_glom(taxrank = "Genus") %>%
+  psmelt() %>%
+  group_by(Genus) %>%
+  summarise(MeanAbundance = mean(Abundance)) %>%
+  arrange(desc(MeanAbundance))
+
+                                                                                    
 phyloseq::otu_table(ps_rel_abundgamb)[1:5, 1:5]
 phyloseq::plot_bar(ps_rel_abundgamb, fill = "Genus") +
   geom_bar(stat="identity", position="fill", width = 0.2) +
