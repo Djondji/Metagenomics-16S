@@ -2,7 +2,7 @@
 #### This protocol should be adapted by users according to what they are looking for
 
 #### Set the working directory to the analysis folder where all your data is located
-setwd("E:/projet/These/")
+setwd("path/to/your/folder")
 
 #### loading packages
 library("tidyverse")
@@ -275,7 +275,6 @@ ggplot(dat.agr.fun, aes(x = Status, y = Abundance, fill = Genus)) +
   ggtitle("Top 10 Bacterial Genera - Anopheles_funestus") +
   labs(fill = "Genus") +
   scale_fill_brewer(palette = "Set3")  # 🎨 Color palette for 10 genera
-
 
 
 ALPHADIVERSITY
