@@ -1,13 +1,18 @@
 ## METAGENOMIC ANALYSES TUTORIAL
-## This tutorial is made for level 0 linux users to help analysing metagenomic data on a remote server
-## This tutorial is mostly based on internet resources found here
-## http://rstudio-pubs-static.s3.amazonaws.com/325915_2b6fbb4a06024ea29f1959f5ec0f52e4.html
-## Accession date: 10/03/2023
-## Wrote on the 10/03/2023 by Fleuriane Metissa Djondji Kamga for linux level 0 user.
+
+## This tutorial is made for level 0 linux users to help analysing metagenomic data on a remote server. We provide instructions and a workflow description for processing 16S rRNA sequences using Mothur
+## This tutorial is mostly based on internet resources found here: http://rstudio-pubs-static.s3.amazonaws.com/325915_2b6fbb4a06024ea29f1959f5ec0f52e4.html (Accession date: 10/03/2023)
+## We will complete all sequence processing in the program mothur (https://www.mothur.org/wiki/Main_Page). All the Windows PC Users need to download ssh client for connecting to the remote computer. 
+
+## Define the working directory in Mothur using the set.dir command. This command tells Mothur where to look for input files and where to save output files.
+Let's say you want to set the working directory to /home/user/mothur_analysis
+mothur
+mothur > set.dir(dir="/home/user/mothur_analysis")
+
 ## Make the list of paired sequences for building contigs
 make.file(inputdir=./, type=gz)
 
-## The first thing we want to do is combine our two sets of reads for each sample and then to combine the data from all of the samples. Make contigs with R1 and R2 files using 32 cores
+## Combine our two sets of reads for each sample and then to combine the data from all of the samples. Make contigs with R1 and R2 files using 4 cores
 make.contigs(file=stability.files, oligos=V3V4.oligos, pdiffs=2, processors=4)
 
 ## Summarize the sequences to overview their sizes
@@ -15,11 +20,9 @@ summary.seqs(fasta=stability.trim.contigs.fasta)
 
 ## Trim the primers and/or barcodes with the oligo files that you can build in txt file and rename it
 ## changing its extention from .txt to .oligos: you should build it like this first line: forward	CCTACGGGNGGCWGCAGNNNNNNNNNN
-##									     second line: reverse	GACTACHVGGGTATCTAATCCNNNNNNNNNN
+##									                                                          second line: reverse	GACTACHVGGGTATCTAATCCNNNNNNNNNN
 ## These are the oligos used for the sequencing. Note they contain ambig codes! ("first line" and "second line" are not included in the file)
-## Refer to the following link for more details in building files for removing oligos and/or barcodes
-
-## https://mothur.org/wiki/oligos_file/
+## Refer to the following link for more details in building files for removing oligos and/or barcodes (https://mothur.org/wiki/oligos_file/)
 trim.seqs(fasta=stability.trim.contigs.fasta, oligos=V3V4.oligos, processors=4)
 
 ## Summarize again the sequences to overview the new sizes without primers
