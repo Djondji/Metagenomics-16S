@@ -1,3 +1,8 @@
+#### Microbiome analysis for beginner 
+#### This protocol should be adapted by users according to what they are looking for
+#### change the working directory to the analysis folder where all your data is located
+setwd("E:/projet/These/16S_sequencing/16s_crid/Microbiome_analyses/data_analysis/Analyse_1")
+
 #### Plot Heatmap abundance plot of the Genus to capture the best candidate bacteria
 carbom_abund <- filter_taxa(ps2, function(x) sum(x > total*0.05) > 0, TRUE)
 otu_table(carbom_abund)
@@ -17,10 +22,6 @@ plot_heatmap(carbomgamb_abund,
              sample.order = "Status",       # Regroupe les colonnes par groupe
              trans = NULL,
              low = "beige", high = "red", na.value = "beige")
-
-
-
-
 
 ## Anopheles funestus
 carbom_abundfun <- filter_taxa(Afun, function(x) sum(x > total*0.05) > 0, TRUE)
