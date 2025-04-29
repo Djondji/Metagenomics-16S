@@ -1,7 +1,14 @@
-PHYLOGENETIC TREE
+#### Microbiome analysis for beginner 
+
+#### This protocol should be adapted by users according to what they are looking for
+#### Set the working directory to the analysis folder where all your data is located
+setwd("path/to/your/folder")
 
 ## Loading package
 Library("ape")
+library("phyloseq")
+
+PHYLOGENETIC TREE
 
 ####We can create a random phylogenetic tree with the ape package in overall sample                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
 random_tree = rtree(ntaxa(ps2), rooted=TRUE, tip.label=taxa_names(ps2))
