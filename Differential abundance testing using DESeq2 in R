@@ -1,0 +1,61 @@
+library(phyloseq)
+library(DESeq2)
+library(ggplot2)
+library(ggrepel)
+
+# Supposons que votre objet phyloseq s'appelle `ps`
+# Et que la variable de comparaison est `Status` avec deux groupes : "Survivors" vs "Kisumu"
+
+# Sous-échantillonner les groupes d'intérêt
+ps_sub <- subset_samples(ps2, Status %in% c("Survivor_1X", "Kisumu"))
+ps_sub <- prune_taxa(taxa_sums(ps_sub) > 0, ps_sub)  # Retirer taxons absents
+table(sample_data(ps_sub)$Status)
+
+# Convertir en objet DESeq2
+dds <- phyloseq_to_deseq2(ps_sub, ~ Status)
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("Survivor_1X", "Kisumu"))
+res <- lfcShrink(dds, coef = 2, type = "apeglm")  # shrink log2FC
+res_df <- as.data.frame(res)
+res_df$taxa <- rownames(res_df)
+
+tax <- as.data.frame(tax_table(ps_sub))
+tax$taxa <- rownames(tax)
+res_merged <- merge(res_df, tax, by = "taxa")
+
+# Définir les taxons significatifs : padj < 0.05 et log2FC > seuil
+sig_taxa <- res_merged[
+  res_merged$padj < 0.05 & abs(res_merged$log2FoldChange) > 2, 
+]
+
+# Ajouter la colonne -log10(p-value) dans res_merged
+res_merged$neglog10p <- -log10(res_merged$pvalue)
+res_merged$sig <- ifelse(res_merged$padj < 0.05 & abs(res_merged$log2FoldChange) > 2, "Significant", "NS")
+
+
+# Créer le sous-ensemble significatif APRÈS avoir ajouté neglog10p
+sig_taxa <- res_merged[res_merged$padj < 0.05 & abs(res_merged$log2FoldChange) > 2, ]
+
+# Ajouter la colonne label en italique
+sig_taxa$label <- paste0("italic('", sig_taxa$Genus, "')")
+
+# Plot
+ggplot(res_merged, aes(x = log2FoldChange, y = neglog10p)) +
+  geom_point(aes(color = sig), alpha = 0.7) +
+  scale_color_manual(values = c("Significant" = "red", "NS" = "gray")) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  geom_text_repel(
+    data = sig_taxa,
+    aes(x = log2FoldChange, y = neglog10p, label = label),
+    size = 3.5,
+    max.overlaps = 10,
+    parse = TRUE
+  ) +
+  labs(
+    x = "log2 Fold Change (Survivor_1X vs Kisumu)",
+    y = "-log10(p-value)",
+    title = "Volcano Plot - Taxons Différentiellement Abondants"
+  ) +
+  theme_minimal()
