@@ -1,3 +1,8 @@
+#### Microbiome analysis for beginner 
+
+#### This protocol should be adapted by users according to what they are looking for
+
+#### loading packages
 library(phyloseq)
 library(DESeq2)
 library(ggplot2)
