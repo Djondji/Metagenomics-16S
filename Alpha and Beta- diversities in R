@@ -1,72 +1,157 @@
+#### Microbiome analysis for biginner 
+#### This protocol should be adapted by users according to what they are looking for
 
+#### Set the working directory to the analysis folder where all your data is located
+setwd("path/to/your/folder")
+
+#### loading packages
+library("Matrix")
+library("reshape2")
+library("vegan")
+library("pairwiseAdonis")
+library(patchwork)  # For combining plots
+
+ALPHADIVERSITY
+
+####Test whether the observed number of OTUs differs significantly between groups (Alpha diversity parameters)
+
+## Calculate Chao1 and Shannon properly
+div_data <- estimate_richness(ps2, measures = c("Chao1", "Shannon" ))
+
+## Merge with metadata
+d <- cbind(meta(ps2), div_data)
+
+## Subset to only "Anopheles gambiae" samples
+d_gambiae <- d %>% filter(Species == "Anopheles_gambiae")
+
+## Prepare pairwise comparisons
+Status.levels <- levels(as.factor(d$Status))
+Status.pairs <- combn(Status.levels, 2, simplify = FALSE)
+
+## Plot Chao1
+my_colors <- c("#E7B800", "#00AFBB", "#FC4E07", "#7D3C98", "#2980B9", "#1ABC9C", 
+               "#F39C12", "#D35400", "#C0392B", "#BDC3C7", "#2ECC71", "#8E44AD")
+p_chao1 <- ggboxplot(d_gambiae, x = "Status", y = "Chao1",
+                     color = "Status", palette = my_colors,
+                     add = "jitter", shape = "Status") +
+                     theme(legend.position = "none") +
+  stat_compare_means(comparisons = Status.pairs, label = "p.signif", 
+                     label.y = max(d_gambiae$Shannon, na.rm = TRUE) * 1.05) +
+  stat_compare_means(label.y = max(d_gambiae$Shannon, na.rm = TRUE) * 1.2) +
+  ggtitle("Chao1 Diversity Index")
+
+
+## Plot Shannon
+p_shannon <- ggboxplot(d_gambiae, x = "Status", y = "Shannon",
+                       color = "Status", palette = my_colors,
+                       add = "jitter", shape = "Status") +
+  theme(legend.position = "right")+
+  stat_compare_means(comparisons = Status.pairs) +
+  stat_compare_means(label.y = max(d$Shannon, na.rm = TRUE) * 1.05) +
+  ggtitle("Shannon Diversity Index")
+
+## Combine plots together
+p_chao1 + p_shannon  # Side by side
+
+
+### Subset only for Anopheles funestus
+div_data_fun <- estimate_richness(ps2, measures = c("Chao1", "Shannon" ))
+
+## Merge with metadata
+d_fun <- cbind(meta(ps2), div_data_fun)
+
+## Subset to only "Anopheles funestus" samples
+d_funestus <- d_fun %>% filter(Species == "Anopheles_funestus")
+
+## Prepare pairwise comparisons
+Status.levels <- levels(as.factor(d$Status))
+Status.pairs <- combn(Status.levels, 2, simplify = FALSE)
+
+## Plot Chao1
+my_colors <- c("#E7B800", "#00AFBB", "#FC4E07", "#7D3C98", "#2980B9", "#1ABC9C", 
+               "#F39C12", "#D35400", "#C0392B", "#BDC3C7", "#2ECC71", "#8E44AD")
+p_chao1_fun <- ggboxplot(d_funestus, x = "Status", y = "Chao1",
+                         color = "Status", palette = my_colors,
+                         add = "jitter", shape = "Status") +
+  theme(legend.position = "none") +
+  stat_compare_means(comparisons = Status.pairs) +   # Pairwise p-values
+  stat_compare_means(label.y = max(d$Chao1, na.rm = TRUE) * 1.05) +  # Overall p-value
+  ggtitle("Chao1 Diversity Index")
+
+## Plot Shannon
+p_shannon_fun <- ggboxplot(d_funestus, x = "Status", y = "Shannon",
+                           color = "Status", palette = my_colors,
+                           add = "jitter", shape = "Status") +
+  theme(legend.position = "right")+
+  stat_compare_means(comparisons = Status.pairs) +
+  stat_compare_means(label.y = max(d$Shannon, na.rm = TRUE) * 1.05) +
+  ggtitle("Shannon Diversity Index")
+
+## Combine plots together
+p_chao1_fun + p_shannon_fun  # Side by side
+
+
+
+BETADIVERSITY
 
 library("Matrix")
 library("reshape2")
 library("vegan")
 library("pairwiseAdonis")
 
+### Compare community dissimilarities in overall groups  using bray-curtis index 
+### Anopheles gambiae
+## Plot the PCoA graph of all the groups
+relab_genera1 = transform_sample_counts(Agamb, function(x) x / sum(x) * 100) 
+ord1 = ordinate(relab_genera1, method="PCoA", distance = "bray")
+plot_ordination(relab_genera1, ord1, color = "Status", shape="Test") + 
+  geom_point(size=3) + 
+  stat_ellipse(aes(Status=Status))
+
+## Run PERMANOVA for statistic analysis
+otu1 <- abundances(Agamb)
+pseq.rel1 <- microbiome::transform(Agamb, "compositional")
+meta1 <- meta(pseq.rel1)
+permanova_results <- adonis2(t(otu1_clean) ~ Status, 
+                      data = meta1_clean, permutations = 999, method = "bray")
+permanova_results
+
+## Pairwise comparison between two groups. For example: select "Survivors" and "Kisumu"
+## Plot the PCoA plot for the two groups
+relab_genera1_filtre <- subset_samples(relab_genera1, Status2 %in% c("Survivors", "Kisumu")
+ord1_filtre <- ordinate(relab_genera1_filtre, method = "PCoA", distance = "bray")
+plot_ordination(relab_genera1_filtre, ord1_filtre, color = "Status2", shape = "Test") +
+  geom_point(size = 3) +
+  stat_ellipse(aes(color = Status2)
+
+## Run PERMANOVA for statistic analysis of the 2 selected groups
+group_interest <- c("Survivors", "Kisumu")
+meta1_filtre <- meta1[meta1$Status2 %in% groupes_interet, ]
+otu1_filtre <- otu1[, rownames(meta1_filtre)]
+pairwise_permanova_results <- pairwise.adonis2(t(ord1_filtre) ~ Status2, 
+                                               data = meta1_filtre,
+                                               perm = 999, 
+                                               method = "bray")
+# View results
+print(pairwise_permanova_results)
+
+### Anopheles funestus
+## Plot the PCoA graph
+relab_genera2 = transform_sample_counts(Afun, function(x) x / sum(x) * 100) 
+ord2 = ordinate(relab_genera2, method="PCoA", distance = "bray")
+plot_ordination(relab_genera2, ord2, color = "Status", shape="Test") + 
+  geom_point(size=3) + 
+  stat_ellipse(aes(Status=Status))
+
+## Run PERMANOVA for statistic analysis
+otu2 <- abundances(Afun)
+pseq.rel2 <- microbiome::transform(Afun, "compositional")
+meta2 <- meta(pseq.rel2)
+permanova2 <- adonis2(t(otu2) ~ Status,
+                      data = meta2, permutations=999, method = "bray")
+permanova2
 
 
-ALPHADIVERSITY
-
-####Test whether the observed number of OTUs differs significantly between groups (Alpha diversity parameters)
-ps3 <- prune_taxa(taxa_sums(ps2) > 0, ps2)
-tab <- microbiome::alpha(ps2, index = "all")
-ps3.meta <- meta(ps2)
-ps3.meta$Shannon <- tab$diversity_shannon 
-ps3.meta$inversesimpson <- tab$diversity_inverse_simpson
-hist(ps3.meta$Shannon, main="Shannon diversity", xlab="", breaks=10)
-
-plot_richness(ps2, x="Species", color = "Species", measures=c("Observed", "Shannon", "Chao", "ace")) + 
-  geom_boxplot(alpha=0.6)+ 
-  theme(legend.position="", axis.text.x=element_text(angle=0,hjust=1,vjust=1,size=8))
-
-d <- meta(ps2)
-d$diversity <- microbiome::diversity(ps2, "Shannon")$shannon
-spl <- split(d$diversity, d$Species)
-bmi <- levels(ps3.meta$Species)
-bmi.pairs <- combn(seq_along(spl), 2, simplify = FALSE, FUN = function(i)bmi[i])
-p <- ggboxplot(ps3.meta, x = "Species", y = c("Shannon"),
-               color = "Species", palette =c("#E7B800", "#00AFBB"),
-               add = "jitter", shape = "Species")
-p + stat_compare_means(comparisons = bmi.pairs) +
-  stat_compare_means(label.y = 2) 
-
-## Anopheles gambiae
-ps4 <- prune_taxa(taxa_sums(carbomgamb) > 0, carbomgamb)
-tab <- microbiome::alpha(carbomgamb, index = "all")
-ps4.meta <- meta(carbomgamb)
-ps4.meta$Shannon <- tab$diversity_shannon 
-ps4.meta$InverseSimpson <- tab$diversity_inverse_simpson
-hist(ps4.meta$Shannon, main="Shannon diversity", xlab="", breaks=10)
-dg<- meta(carbomgamb)
-dg$diversity <- microbiome::diversity(carbomgamb, "Shannon")$Shannon
-splg <- split(d$diversity, d$phenotypes)
-bmig <- levels(ps4.meta$phenotypes)
-bmig.pairs <- combn(seq_along(splg), 2, simplify = FALSE, FUN = function(i)bmig[i])
-p4 <- ggboxplot(ps4.meta, x = "Phenotypes", y = "Shannon",
-                color = "Phenotypes", palette =c("#E7B800", "#00AFBB", "#00FF00", "#0000FF", "#00FFFF", "#0000A0", "#ADD8E6", "#800080", "#FFFF00", "#00ff00", "#808000", "#008000", "#800000", "#A52A2A"),
-                add = "jitter", shape = "Phenotypes")
-p4 + stat_compare_means(method = "kruskal.test", label.y = 2) + 
-  stat_compare_means(aes(label = after_stat(p.signif)), ref.group = "Alive_1X")
-
-## Anopheles funestus
-ps5 <- prune_taxa(taxa_sums(carbomfun) > 0, carbomfun)
-tab <- microbiome::alpha(carbomfun, index = "all")
-ps5.meta <- meta(carbomfun)
-ps5.meta$Shannon <- tab$diversity_shannon 
-ps5.meta$InverseSimpson <- tab$diversity_inverse_simpson
-hist(ps5.meta$Shannon, main="Shannon diversity", xlab="", breaks=10)
-dfu<- meta(carbomfun)
-dfu$diversity <- microbiome::diversity(carbomfun, "Shannon")$Shannon
-splfu <- split(d$diversity, d$phenotypes)
-bmifu <- levels(ps5.meta$phenotypes)
-bmifu.pairs <- combn(seq_along(splfu), 2, simplify = FALSE, FUN = function(i)bmifu[i])
-p5 <- ggboxplot(ps5.meta, x = "Phenotypes", y = "Shannon",
-                color = "Phenotypes", palette =c("#E7B800", "#00AFBB"),
-                add = "jitter", shape = "Phenotypes")
-p5 + stat_compare_means(method = "wilcox.test", label.y = 2)+ 
-  stat_compare_means(aes(label = after_stat(p.signif)), ref.group = "Fumoz_Unselect")
 
 
 ####PHYLOGENETIC TREE
