@@ -10,6 +10,7 @@ library("reshape2")
 library("vegan")
 library("pairwiseAdonis")
 library(patchwork)  # For combining plots
+library(rstatix)
 
 ALPHADIVERSITY
 
@@ -21,38 +22,60 @@ div_data <- estimate_richness(ps2, measures = c("Chao1", "Shannon" ))
 ## Merge with metadata
 d <- cbind(meta(ps2), div_data)
 
-## Subset to only "Anopheles gambiae" samples
+## Example: Subset to only "Anopheles gambiae" samples
 d_gambiae <- d %>% filter(Species == "Anopheles_gambiae")
 
-## Prepare pairwise comparisons
-Status.levels <- levels(as.factor(d$Status))
-Status.pairs <- combn(Status.levels, 2, simplify = FALSE)
+## Pairwise comparison using the Wilcoxon test. 
+stat.test <- d_gambiae %>%
+  pairwise_wilcox_test(Shannon ~ Status, p.adjust.method = "fdr")
 
-## Plot Chao1
-my_colors <- c("#E7B800", "#00AFBB", "#FC4E07", "#7D3C98", "#2980B9", "#1ABC9C", 
-               "#F39C12", "#D35400", "#C0392B", "#BDC3C7", "#2ECC71", "#8E44AD")
+## Define the pairs to be compared (optional if you want to choose them manually)
+Status.pairs <- combn(unique(d_gambiae$Status), 2, simplify = FALSE)
 
-p_chao1 <- ggboxplot(d_gambiae, x = "Status", y = "Chao1",
-                     color = "Status", palette = my_colors,
-                     add = "jitter", shape = "Status") +
-  theme(legend.position = "none") +
-  stat_compare_means(comparisons = Status.pairs, label = "p.signif", 
-                     label.y = max(d_gambiae$Chao1, na.rm = TRUE) * 1.05) +
-  stat_compare_means(label.y = max(d_gambiae$Chao1, na.rm = TRUE) * 1.2) +
-  ggtitle("Chao1 Diversity Index")
+## Calculate Kruskal-Wallis test and p-value for Shannon index diversity
+kruskal_res <- d_gambiae %>% kruskal_test(Shannon ~ Status)
+p_val <- signif(kruskal_res$p, 3)
 
-## Plot Shannon
-p_shannon <- ggboxplot(d_gambiae, x = "Status", y = "Shannon",
-                       color = "Status", palette = my_colors,
-                       add = "jitter", shape = "Status") +
-  theme(legend.position = "right")+
-  stat_compare_means(comparisons = Status.pairs) +
-  stat_compare_means(label.y = max(d$Shannon, na.rm = TRUE) * 1.05) +
-  ggtitle("Shannon Diversity Index")
+## Build the Shannon plot
+Shannon_gamb <- ggboxplot(d_gambiae, x = "Status", y = "Shannon",
+          color = "Status", palette = "jco", add = "jitter") +
+  theme_bw()+
+  theme(legend.position = "right",
+        legend.title = element_text(size = 13, face = "bold"),
+        legend.text = element_text(size = 12)) +  # <-- controls legend appearance
+  stat_compare_means(comparisons = Status.pairs, 
+                     method = "wilcox.test", 
+                     label = "p.signif") +
+  annotate("text", 
+           x = -Inf, y = Inf, 
+           label = paste0("Kruskal-Wallis, p = ", p_val),
+           hjust = -0.1, vjust = 1.5, size = 4) +
+  ggtitle("Shannon Diversity Index – Pairwise Comparison")
 
-## Combine plots together
-p_chao1 + p_shannon  # Side by side
+## Calculate Kruskal-Wallis test and p-value for Chao1 index diversity
+p_val <- d_gambiae %>%
+  kruskal_test(Chao1 ~ Status) %>%
+  pull(p) %>%
+  signif(3)
 
+##  Build the Chao1 plot
+Chao1_gamb <- ggboxplot(d_gambiae, x = "Status", y = "Chao1",
+                        color = "Status", palette = "jco", add = "jitter") +
+  theme_bw() +
+  theme(legend.position = "none",
+        legend.text = element_text(size = 12), 
+        legend.title = element_text(size = 13, face = "bold")) +
+  stat_compare_means(comparisons = Status.pairs, 
+                     method = "wilcox.test", 
+                     label = "p.signif") +
+  annotate("text", 
+           x = -Inf, y = Inf, 
+           label = paste0("Kruskal-Wallis, p = ", p_val),
+           hjust = -0.1, vjust = 1.5, size = 4) +
+  ggtitle("Chao1 Diversity Index – Pairwise Comparison")
+
+## Combine the two figures
+Shannon_gamb + Chao1_gamb
 
 ### Subset only for Anopheles funestus
 div_data_fun <- estimate_richness(ps2, measures = c("Chao1", "Shannon" ))
@@ -67,28 +90,37 @@ d_funestus <- d_fun %>% filter(Species == "Anopheles_funestus")
 Status.levels <- levels(as.factor(d$Status))
 Status.pairs <- combn(Status.levels, 2, simplify = FALSE)
 
-## Plot Chao1
+## Define the colors of the plot
 my_colors <- c("#E7B800", "#00AFBB", "#FC4E07", "#7D3C98", "#2980B9", "#1ABC9C", 
                "#F39C12", "#D35400", "#C0392B", "#BDC3C7", "#2ECC71", "#8E44AD")
-p_chao1_fun <- ggboxplot(d_funestus, x = "Status", y = "Chao1",
-                         color = "Status", palette = my_colors,
-                         add = "jitter", shape = "Status") +
-  theme(legend.position = "none") +
-  stat_compare_means(comparisons = Status.pairs) +   # Pairwise p-values
-  stat_compare_means(label.y = max(d$Chao1, na.rm = TRUE) * 1.05) +  # Overall p-value
-  ggtitle("Chao1 Diversity Index")
 
 ## Plot Shannon
 p_shannon_fun <- ggboxplot(d_funestus, x = "Status", y = "Shannon",
                            color = "Status", palette = my_colors,
                            add = "jitter", shape = "Status") +
-  theme(legend.position = "right")+
+  theme_bw()+
+  theme(legend.position = "right",
+                   legend.text = element_text(size = 10), 
+                   legend.title = element_text(size = 11, face = "bold")) +
   stat_compare_means(comparisons = Status.pairs) +
   stat_compare_means(label.y = max(d$Shannon, na.rm = TRUE) * 1.05) +
   ggtitle("Shannon Diversity Index")
 
+# Cha01 Index
+p_chao1_fun <- ggboxplot(d_funestus, x = "Status", y = "Chao1",
+                         color = "Status", palette = my_colors,
+                         add = "jitter", shape = "Status") +
+  theme_bw()+
+  theme(legend.position = "none",
+        legend.text = element_text(size = 10), 
+        legend.title = element_text(size = 11, face = "bold")) +
+  stat_compare_means(comparisons = Status.pairs) +
+  # Pairwise p-values
+  stat_compare_means(label.y = max(d$Chao1, na.rm = TRUE) * 1.05) +  # Overall p-value
+  ggtitle("Chao1 Diversity Index")
+
 ## Combine plots together
-p_chao1_fun + p_shannon_fun  # Side by side
+p_shannon_fun + p_chao1_fun # Side by side
 
 
 
