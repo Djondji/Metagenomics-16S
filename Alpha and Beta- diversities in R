@@ -94,11 +94,6 @@ p_chao1_fun + p_shannon_fun  # Side by side
 
 BETADIVERSITY
 
-library("Matrix")
-library("reshape2")
-library("vegan")
-library("pairwiseAdonis")
-
 ### Compare community dissimilarities in overall groups  using bray-curtis index 
 ### Anopheles gambiae
 ## Plot the PCoA graph of all the groups
