@@ -42,10 +42,14 @@ Shannon_gamb <- ggboxplot(d_gambiae, x = "Status", y = "Shannon",
   theme_bw()+
   theme(legend.position = "right",
         legend.title = element_text(size = 13, face = "bold"),
-        legend.text = element_text(size = 12)) +  # <-- controls legend appearance
+        legend.text = element_text(size = 12),
+        axis.text.x = element_text(size = 13)) +  # <-- controls legend appearance
   stat_compare_means(comparisons = Status.pairs, 
                      method = "wilcox.test", 
                      label = "p.signif") +
+  stat_summary(fun = mean, geom = "text", 
+               aes(label = round(..y.., 2)), 
+               vjust = -0.5, size = 2.5) +
   annotate("text", 
            x = -Inf, y = Inf, 
            label = paste0("Kruskal-Wallis, p = ", p_val),
@@ -64,10 +68,14 @@ Chao1_gamb <- ggboxplot(d_gambiae, x = "Status", y = "Chao1",
   theme_bw() +
   theme(legend.position = "none",
         legend.text = element_text(size = 12), 
-        legend.title = element_text(size = 13, face = "bold")) +
+        legend.title = element_text(size = 13, face = "bold"),
+        axis.text.x = element_text(size = 13)) +
   stat_compare_means(comparisons = Status.pairs, 
                      method = "wilcox.test", 
                      label = "p.signif") +
+  stat_summary(fun = mean, geom = "text", 
+               aes(label = round(..y.., 2)), 
+               vjust = -0.5, size = 2.5) +
   annotate("text", 
            x = -Inf, y = Inf, 
            label = paste0("Kruskal-Wallis, p = ", p_val),
@@ -101,7 +109,8 @@ p_shannon_fun <- ggboxplot(d_funestus, x = "Status", y = "Shannon",
   theme_bw()+
   theme(legend.position = "right",
                    legend.text = element_text(size = 10), 
-                   legend.title = element_text(size = 11, face = "bold")) +
+                   legend.title = element_text(size = 11, face = "bold"),
+                  axis.text.x = element_text(size = 13)) +
   stat_compare_means(comparisons = Status.pairs) +
   stat_compare_means(label.y = max(d$Shannon, na.rm = TRUE) * 1.05) +
   ggtitle("Shannon Diversity Index")
@@ -113,7 +122,8 @@ p_chao1_fun <- ggboxplot(d_funestus, x = "Status", y = "Chao1",
   theme_bw()+
   theme(legend.position = "none",
         legend.text = element_text(size = 10), 
-        legend.title = element_text(size = 11, face = "bold")) +
+        legend.title = element_text(size = 11, face = "bold"),
+        axis.text.x = element_text(size = 13)) +
   stat_compare_means(comparisons = Status.pairs) +
   # Pairwise p-values
   stat_compare_means(label.y = max(d$Chao1, na.rm = TRUE) * 1.05) +  # Overall p-value
