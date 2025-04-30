@@ -31,15 +31,15 @@ Status.pairs <- combn(Status.levels, 2, simplify = FALSE)
 ## Plot Chao1
 my_colors <- c("#E7B800", "#00AFBB", "#FC4E07", "#7D3C98", "#2980B9", "#1ABC9C", 
                "#F39C12", "#D35400", "#C0392B", "#BDC3C7", "#2ECC71", "#8E44AD")
+
 p_chao1 <- ggboxplot(d_gambiae, x = "Status", y = "Chao1",
                      color = "Status", palette = my_colors,
                      add = "jitter", shape = "Status") +
-                     theme(legend.position = "none") +
+  theme(legend.position = "none") +
   stat_compare_means(comparisons = Status.pairs, label = "p.signif", 
-                     label.y = max(d_gambiae$Shannon, na.rm = TRUE) * 1.05) +
-  stat_compare_means(label.y = max(d_gambiae$Shannon, na.rm = TRUE) * 1.2) +
+                     label.y = max(d_gambiae$Chao1, na.rm = TRUE) * 1.05) +
+  stat_compare_means(label.y = max(d_gambiae$Chao1, na.rm = TRUE) * 1.2) +
   ggtitle("Chao1 Diversity Index")
-
 
 ## Plot Shannon
 p_shannon <- ggboxplot(d_gambiae, x = "Status", y = "Shannon",
