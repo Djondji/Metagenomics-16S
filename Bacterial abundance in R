@@ -276,3 +276,92 @@ ggplot(dat.agr.fun, aes(x = Status, y = Abundance, fill = Genus)) +
   labs(fill = "Genus") +
   scale_fill_brewer(palette = "Set3")  # 🎨 Color palette for 10 genera
 
+BACTERIAL PROPORTION (Mean of proportion)
+
+#### Calculate the mean of proportion at the Genus level
+ps_rel <- transform_sample_counts(ps2, function(x) x / sum(x))
+ps_genus <- tax_glom(ps_rel, taxrank = "Genus")
+otu <- as.data.frame(t(otu_table(ps_genus))) 
+tax <- as.data.frame(tax_table(ps_genus))
+meta <- as(sample_data(ps_genus), "data.frame")
+otu$SampleID <- rownames(otu)
+meta$SampleID <- rownames(meta)
+otu_meta <- left_join(otu, meta, by = "SampleID")
+abundance_cols <- names(otu_meta)[sapply(otu_meta, is.numeric)]
+otu_long <- pivot_longer(
+  otu_meta,
+  cols = all_of(abundance_cols),
+  names_to = "Genus_ID",
+  values_to = "Proportion"
+)
+otu_long$Genus <- tax[otu_long$Genus_ID, "Genus"]
+summary_table <- otu_long %>%
+  group_by(Species, Status, Genus) %>%
+  summarise(
+    Mean = mean(Proportion, na.rm = TRUE) * 100,
+    Min = min(Proportion, na.rm = TRUE) * 100,
+    Max = max(Proportion, na.rm = TRUE) * 100,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Mean))
+head(summary_table, 10)
+write.csv(summary_table, "Proportions_Genus_Ranges_by_Species_Status.csv", row.names = FALSE)
+
+## Phylum Level
+ps_rel_phylum <- transform_sample_counts(ps2, function(x) x / sum(x))
+ps_phylum <- tax_glom(ps_rel_phylum, taxrank = "Phylum")
+otu_p <- as.data.frame(t(otu_table(ps_phylum)))  # genres en colonnes
+tax_p <- as.data.frame(tax_table(ps_phylum))
+meta_p <- as(sample_data(ps_phylum), "data.frame")
+otu_p$SampleID <- rownames(otu_p)
+meta_p$SampleID <- rownames(meta_p)
+otu_meta_p <- left_join(otu_p, meta_p, by = "SampleID")
+abundance_cols_p <- names(otu_meta_p)[sapply(otu_meta_p, is.numeric)]
+otu_long_p <- pivot_longer(
+  otu_meta_p,
+  cols = all_of(abundance_cols_p),
+  names_to = "Phylum_ID",
+  values_to = "Proportion"
+)
+otu_long_p$Phylum <- tax[otu_long_p$Phylum_ID, "Phylum"]
+summary_table_p <- otu_long_p %>%
+  group_by(Species, Status, Phylum) %>%
+  summarise(
+    Mean = mean(Proportion, na.rm = TRUE) * 100,
+    Min = min(Proportion, na.rm = TRUE) * 100,
+    Max = max(Proportion, na.rm = TRUE) * 100,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Mean))
+head(summary_table_p, 10)
+write.csv(summary_table_p, "Proportions_Phylum_Ranges_by_Species_Status.csv", row.names = FALSE)
+
+## Family Level
+ps_rel_Family <- transform_sample_counts(ps2, function(x) x / sum(x))
+ps_Family <- tax_glom(ps_rel_Family, taxrank = "Family")
+otu_F <- as.data.frame(t(otu_table(ps_Family)))  # genres en colonnes
+tax_F <- as.data.frame(tax_table(ps_Family))
+meta_F <- as(sample_data(ps_Family), "data.frame")
+otu_F$SampleID <- rownames(otu_F)
+meta_F$SampleID <- rownames(meta_F)
+otu_meta_F <- left_join(otu_F, meta_F, by = "SampleID")
+abundance_cols_F <- names(otu_meta_F)[sapply(otu_meta_F, is.numeric)]
+otu_long_F <- pivot_longer(
+  otu_meta_F,
+  cols = all_of(abundance_cols_F),
+  names_to = "Family_ID",
+  values_to = "Proportion"
+)
+otu_long_F$Family <- tax[otu_long_F$Family_ID, "Family"]
+summary_table_F <- otu_long_F %>%
+  group_by (Species, Status, Family) %>%
+  summarise(
+    Mean = mean(Proportion, na.rm = TRUE) * 100,
+    Min = min(Proportion, na.rm = TRUE) * 100,
+    Max = max(Proportion, na.rm = TRUE) * 100,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Mean))
+head(summary_table_F, 10)
+write.csv(summary_table_F, "Proportions_Family_Ranges_by_Species_Status.csv", row.names = FALSE)
+
