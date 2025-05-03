@@ -62,25 +62,29 @@ p_val <- d_gambiae %>%
   pull(p) %>%
   signif(3)
 
+Shannon_gamb
+
 ##  Build the Chao1 plot
 Chao1_gamb <- ggboxplot(d_gambiae, x = "Status", y = "Chao1",
                         color = "Status", palette = "jco", add = "jitter") +
   theme_bw() +
-  theme(legend.position = "none",
+  theme(legend.position = "right",
         legend.text = element_text(size = 12), 
         legend.title = element_text(size = 13, face = "bold"),
-        axis.text.x = element_text(size = 13)) +
+        axis.text.x = element_text(size = 12.5)) +
   stat_compare_means(comparisons = Status.pairs, 
                      method = "wilcox.test", 
-                     label = "p.signif") +
+                     label = "p.signif") +  # Pairwise p-values
   stat_summary(fun = mean, geom = "text", 
                aes(label = round(..y.., 2)), 
-               vjust = -0.5, size = 2.5) +
+               vjust = -0.5, size = 4) +  # Show mean values
   annotate("text", 
            x = -Inf, y = Inf, 
            label = paste0("Kruskal-Wallis, p = ", p_val),
-           hjust = -0.1, vjust = 1.5, size = 4) +
-  ggtitle("Chao1 Diversity Index – Pairwise Comparison")
+           hjust = -0.1, vjust = 1.5, size = 4) +  # Annotate Kruskal-Wallis test p-value
+  ggtitle("Chao1 Diversity Index")
+
+Chao1_gamb
 
 ## Combine the two figures
 Shannon_gamb + Chao1_gamb
@@ -106,28 +110,39 @@ my_colors <- c("#E7B800", "#00AFBB", "#FC4E07", "#7D3C98", "#2980B9", "#1ABC9C",
 p_shannon_fun <- ggboxplot(d_funestus, x = "Status", y = "Shannon",
                            color = "Status", palette = my_colors,
                            add = "jitter", shape = "Status") +
-  theme_bw()+
-  theme(legend.position = "right",
-                   legend.text = element_text(size = 10), 
-                   legend.title = element_text(size = 11, face = "bold"),
-                  axis.text.x = element_text(size = 13)) +
+  theme_bw() +
+  theme(legend.position = "none",
+        legend.text = element_text(size = 11), 
+        legend.title = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(size = 13)) +
   stat_compare_means(comparisons = Status.pairs) +
   stat_compare_means(label.y = max(d$Shannon, na.rm = TRUE) * 1.05) +
+  stat_summary(fun = mean, geom = "text", 
+               aes(label = round(..y.., 2)), 
+               vjust = -0.5, size = 4, color = "black") + # Add mean values for Shannon
   ggtitle("Shannon Diversity Index")
+
+p_shannon_fun
 
 # Cha01 Index
 p_chao1_fun <- ggboxplot(d_funestus, x = "Status", y = "Chao1",
                          color = "Status", palette = my_colors,
                          add = "jitter", shape = "Status") +
-  theme_bw()+
-  theme(legend.position = "none",
-        legend.text = element_text(size = 10), 
-        legend.title = element_text(size = 11, face = "bold"),
+  theme_bw() +
+  theme(legend.position = "right",
+        legend.text = element_text(size = 11), 
+        legend.title = element_text(size = 13, face = "bold"),
         axis.text.x = element_text(size = 13)) +
   stat_compare_means(comparisons = Status.pairs) +
   # Pairwise p-values
   stat_compare_means(label.y = max(d$Chao1, na.rm = TRUE) * 1.05) +  # Overall p-value
+  stat_summary(fun = mean, geom = "text", 
+               aes(label = round(..y.., 2)), 
+               vjust = -0.5, size = 4) +  # Display Chao1 mean values inside the plot
   ggtitle("Chao1 Diversity Index")
+
+p_chao1_fun
+
 
 ## Combine plots together
 p_shannon_fun + p_chao1_fun # Side by side
